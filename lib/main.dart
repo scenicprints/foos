@@ -158,7 +158,7 @@ class _WebShellState extends State<WebShell> {
         params.acceptTypes.every((String t) => t.startsWith('image/'));
 
     try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final FilePickerResult? result = await FilePicker.pickFiles(
         allowMultiple: multiple,
         type: imagesOnly ? FileType.image : FileType.any,
       );
