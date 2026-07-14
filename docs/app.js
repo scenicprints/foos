@@ -627,13 +627,20 @@ const dots = $('dots').querySelectorAll('.dot');
 // Assign scrollLeft directly. scrollTo({behavior:'smooth'}) is silently
 // cancelled by `scroll-snap-type: x mandatory`, which made every tap-to-navigate
 // (the dots, and the Kevin/Josh cards on Home) do nothing at all.
-function goTo(i) {
-  pager.scrollLeft = i * pager.clientWidth;
+function setActiveDot(i) {
+  dots.forEach((d, n) => d.classList.toggle('on', n === i));
 }
 
+function goTo(i) {
+  pager.scrollLeft = i * pager.clientWidth;
+  // Setting scrollLeft doesn't reliably fire a scroll event, so light the dot
+  // here rather than waiting for one that may never come.
+  setActiveDot(i);
+}
+
+// Swipes do fire scroll events — this keeps the dots honest while dragging.
 pager.addEventListener('scroll', () => {
-  const i = Math.round(pager.scrollLeft / pager.clientWidth);
-  dots.forEach((d, n) => d.classList.toggle('on', n === i));
+  setActiveDot(Math.round(pager.scrollLeft / pager.clientWidth));
 }, { passive: true });
 
 document.querySelectorAll('[data-goto]').forEach((el) => {
