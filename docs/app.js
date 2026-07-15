@@ -70,6 +70,12 @@ let view = null;             // derived
 let calMonth = null;         // {y, m} being shown on the calendar
 let ready = false;
 
+// The Pi that records games, on the basement Wi-Fi. Its address lives in the
+// league doc so a change syncs to both phones. The default is the Pi's LAN IP
+// rather than foosball.local because Android can't resolve .local names.
+const DEFAULT_PI_URL = 'http://192.168.1.232';
+let piUrl = DEFAULT_PI_URL;
+
 // ═══════════════════════════════════════════════════════════════════════
 //  DERIVE — walk the match log and replay the league
 // ═══════════════════════════════════════════════════════════════════════
@@ -617,6 +623,59 @@ function openDay(iso) {
   sheet.querySelector('#day-close').onclick = closeSheet;
 }
 
+// ── The game camera ───────────────────────────────────────────────────
+// Tap the camera button to jump to the Pi recorder (live view, record,
+// replays). Hold it to change the Pi's address.
+
+function openCamSettings() {
+  const sheet = openSheet(`
+    <div class="grab"></div>
+    <div class="sheethead">
+      <h2 class="q">Game camera</h2>
+      <div class="qsub">Where the table camera lives on the Wi-Fi</div>
+    </div>
+    <div class="sheetbody">
+      <input type="url" id="cam-url" class="caminput" value="${piUrl}"
+             autocapitalize="off" autocorrect="off" spellcheck="false"
+             placeholder="${DEFAULT_PI_URL}">
+      <div class="camhint">The Pi's address on your network. If the camera
+      page won't load, check the Pi's IP on the router and update it here —
+      it syncs to both phones.</div>
+    </div>
+    <div class="sheetfoot">
+      <button class="cta" id="cam-save">Save</button>
+      <button class="cta ghost" id="cam-cancel">Cancel</button>
+    </div>
+  `);
+
+  sheet.querySelector('#cam-cancel').onclick = closeSheet;
+  sheet.querySelector('#cam-save').onclick = async () => {
+    let url = sheet.querySelector('#cam-url').value.trim() || DEFAULT_PI_URL;
+    if (!/^https?:\/\//.test(url)) url = `http://${url}`;
+    url = url.replace(/\/+$/, '');
+    closeSheet();
+    try {
+      await updateDoc(LEAGUE, { piUrl: url });
+      toast('Camera address saved');
+    } catch (e) {
+      showError(`Could not save: ${e.message}`);
+    }
+  };
+}
+
+{
+  const camBtn = $('btn-cam');
+  let holdTimer = null;
+  let held = false;
+  camBtn.addEventListener('pointerdown', () => {
+    held = false;
+    holdTimer = setTimeout(() => { held = true; buzz(20); openCamSettings(); }, 550);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) =>
+    camBtn.addEventListener(ev, () => clearTimeout(holdTimer)));
+  camBtn.onclick = () => { if (!held) window.location.href = piUrl; };
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 //  PAGER
 // ═══════════════════════════════════════════════════════════════════════
@@ -725,6 +784,7 @@ async function seedIfNeeded() {
 function listen() {
   onSnapshot(LEAGUE, (snap) => {
     if (snap.exists() && snap.data().baseline) baseline = snap.data().baseline;
+    if (snap.exists() && snap.data().piUrl) piUrl = snap.data().piUrl;
     renderAll();
   }, (e) => showError(`Sync problem: ${e.message}`));
 

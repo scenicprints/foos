@@ -3,10 +3,13 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Launch the system installer for the downloaded APK -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- usesCleartextTraffic: the game camera (Raspberry Pi) is plain http
+         on the LAN — without this the WebView refuses to navigate to it. -->
     <application
         android:label="Foos"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

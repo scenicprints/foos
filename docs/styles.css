@@ -518,3 +518,22 @@ button:focus-visible{ outline: 2px solid var(--ball); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce){
   *{ animation: none !important; transition: none !important; }
 }
+
+/* ── Game camera (the Pi recorder) ─────────────────────────────────── */
+.appright{ display:flex; align-items:center; gap:8px; }
+.camb{
+  height: 26px; padding: 0 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink-dim);
+  display: grid; place-items: center;
+}
+.camb:active{ color: var(--ball); border-color: var(--ball); }
+.caminput{
+  width: 100%; padding: 12px 13px; border-radius: 11px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-family: var(--mono); font-size: 15px;
+}
+.caminput:focus{ outline: none; border-color: var(--ball); }
+.camhint{
+  margin-top: 9px; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .06em; color: var(--ink-dim); line-height: 1.5;
+}
