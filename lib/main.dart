@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'theme.dart';
@@ -59,6 +60,19 @@ class _WebShellState extends State<WebShell> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(kBg)
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (NavigationRequest request) {
+          // Game-video downloads (?dl=1 from the camera page): a WebView
+          // silently drops downloads, so hand them to the real browser,
+          // which saves the mp4 to the phone for offline viewing.
+          final Uri uri = Uri.parse(request.url);
+          if (uri.queryParameters['dl'] == '1') {
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
+      ))
       ..loadRequest(Uri.parse(kAppUrl));
 
     _checkForUpdate();

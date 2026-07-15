@@ -70,10 +70,11 @@ let view = null;             // derived
 let calMonth = null;         // {y, m} being shown on the calendar
 let ready = false;
 
-// The Pi that records games, on the basement Wi-Fi. Its address lives in the
-// league doc so a change syncs to both phones. The default is the Pi's LAN IP
-// rather than foosball.local because Android can't resolve .local names.
-const DEFAULT_PI_URL = 'http://192.168.1.232';
+// The Pi that records games. At the table it broadcasts its own Wi-Fi
+// ("FoosCam") with itself always at 10.42.0.1 — join that network and this
+// address just works. The address lives in the league doc so a change syncs
+// to both phones. (An IP, not foosball.local: Android can't resolve .local.)
+const DEFAULT_PI_URL = 'http://10.42.0.1';
 let piUrl = DEFAULT_PI_URL;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -638,9 +639,9 @@ function openCamSettings() {
       <input type="url" id="cam-url" class="caminput" value="${piUrl}"
              autocapitalize="off" autocorrect="off" spellcheck="false"
              placeholder="${DEFAULT_PI_URL}">
-      <div class="camhint">The Pi's address on your network. If the camera
-      page won't load, check the Pi's IP on the router and update it here —
-      it syncs to both phones.</div>
+      <div class="camhint">On the FoosCam Wi-Fi this is always
+      ${DEFAULT_PI_URL}. Only change it if the Pi is joined to a regular
+      network instead — it syncs to both phones.</div>
     </div>
     <div class="sheetfoot">
       <button class="cta" id="cam-save">Save</button>
