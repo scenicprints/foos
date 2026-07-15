@@ -17,7 +17,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  doc, collection, onSnapshot, getDoc, setDoc,
+  doc, collection, onSnapshot, getDocFromServer, setDoc,
   addDoc, updateDoc, deleteDoc,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -58,6 +58,9 @@ const SEED = {
     matches: { kevin: 4, josh: 5 },  // undated, unscored matches in the current series
   },
 };
+// Fixed document id → the seed match can only ever exist ONCE, no matter how
+// many times (or on how many devices) the seeding runs.
+const SEED_MATCH_ID = 'seed-2026-07-14';
 const SEED_MATCH = { date: '2026-07-14', winner: 'kevin', loserGoals: 7, seq: 1 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -782,12 +785,22 @@ function renderAll() {
 // ═══════════════════════════════════════════════════════════════════════
 
 async function seedIfNeeded() {
-  const snap = await getDoc(LEAGUE);
-  if (snap.exists()) return;
-  // First ever run: write the state Kevin gave us — 3–3 on series, 5–5 in
-  // the current one, and today's 10–7. Never runs again.
-  await setDoc(LEAGUE, SEED);
-  await addDoc(MATCHES, SEED_MATCH);
+  // Check existence against the SERVER, not the offline cache. An empty cache
+  // on a fresh/offline load used to report "doesn't exist" and re-seed a
+  // duplicate; forcing a server read closes that hole. If we're offline and
+  // can't reach the server, we never seed — better to show nothing briefly
+  // than to invent a phantom match.
+  let exists;
+  try {
+    exists = (await getDocFromServer(LEAGUE)).exists();
+  } catch (_) {
+    return;
+  }
+  if (exists) return;
+  // First ever run: write the state Kevin gave us — 3–3 on series, 5–5 in the
+  // current one, and today's 10–7. Fixed id on the match makes it un-duplicable.
+  await setDoc(LEAGUE, { ...SEED, seeded: true });
+  await setDoc(doc(MATCHES, SEED_MATCH_ID), SEED_MATCH);
 }
 
 function listen() {
