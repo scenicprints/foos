@@ -95,31 +95,50 @@ function sortMatches(list) {
 }
 
 function derive() {
-  const series = { ...baseline.series };
-  let cur = { ...baseline.matches };
+  // Three nested tiers, each resetting the one below when it's won:
+  //   matches (cur)  →  8 wins a series
+  //   series         →  5 wins the TROPHY (a season)
+  //   trophies       →  banked all-time; winning one starts a fresh season.
+  const trophies = { kevin: 0, josh: 0 };        // seasons won, all-time
+  const seriesAllTime = { kevin: 0, josh: 0 };   // series won across every season
+  let series = { ...baseline.series };            // series won THIS season
+  let cur = { ...baseline.matches };              // matches won THIS series
   let track = [
     ...Array(baseline.matches.kevin).fill('kevin'),
     ...Array(baseline.matches.josh).fill('josh'),
   ];
-  let champion = null;
+  let seasonNo = 1;
+
+  // The seed's series count toward the all-time total too.
+  seriesAllTime.kevin += baseline.series.kevin;
+  seriesAllTime.josh += baseline.series.josh;
 
   for (const m of sortMatches(matches)) {
     cur[m.winner]++;
     track.push(m.winner);
     if (cur[m.winner] >= MATCHES_TO_WIN_SERIES) {
+      // Won a series.
       series[m.winner]++;
-      if (series[m.winner] >= SERIES_TO_WIN_TROPHY && !champion) champion = m.winner;
+      seriesAllTime[m.winner]++;
       cur = { kevin: 0, josh: 0 };
       track = [];
+      if (series[m.winner] >= SERIES_TO_WIN_TROPHY) {
+        // Won the trophy → bank it and start a brand-new season at 0–0.
+        trophies[m.winner]++;
+        series = { kevin: 0, josh: 0 };
+        seasonNo++;
+      }
     }
   }
 
   return {
-    series,
+    trophies,
+    seriesAllTime,
+    series,          // this season only
     cur,
     track,
-    seriesNo: series.kevin + series.josh + 1,
-    champion,
+    seriesNo: series.kevin + series.josh + 1,   // series within the current season
+    seasonNo,
   };
 }
 
@@ -165,7 +184,9 @@ function statsFor(who) {
   s.diff = s.scored - s.allowed;
   s.avgMargin = s.known ? s.diff / s.known : 0;
   s.allowedPerWin = s.winsKnown ? s.allowedInWins / s.winsKnown : null;
-  s.series = view ? view.series[who] : baseline.series[who];
+  // All-time totals for the stat sheet (not just this season).
+  s.series = view ? view.seriesAllTime[who] : baseline.series[who];
+  s.trophies = view ? view.trophies[who] : 0;
 
   // streaks, from logged matches only — the pre-app ones have no order
   let curStreak = 0, curKind = null;
@@ -263,12 +284,21 @@ function renderHome() {
     $(`tally-${p}`).textContent = `${wonSeries}/${SERIES_TO_WIN_TROPHY}`;
   }
 
-  $('champ').innerHTML = v.champion
-    ? `<div class="champ">🏆 ${NAME[v.champion]} takes the trophy</div>`
-    : '';
+  // Season label + all-time trophy shelf (hidden until someone has won one).
+  $('season-label').textContent = `Season ${v.seasonNo}`;
+  const totalTrophies = v.trophies.kevin + v.trophies.josh;
+  $('trophies-alltime').innerHTML = totalTrophies === 0 ? '' : `
+    <div class="shelf">
+      <span class="shelf-l">Trophies</span>
+      <span class="shelf-v">
+        <span class="kevin">${NAME.kevin} ${v.trophies.kevin}</span>
+        <span class="sep">—</span>
+        <span class="josh">${v.trophies.josh} ${NAME.josh}</span>
+      </span>
+    </div>`;
 
   $('series-no').textContent = `Series ${v.seriesNo}`;
-  $('home-pill').textContent = `Series ${v.seriesNo}`;
+  $('home-pill').textContent = `Season ${v.seasonNo}`;
   $('cur-kevin').textContent = v.cur.kevin;
   $('cur-josh').textContent = v.cur.josh;
 
@@ -331,6 +361,7 @@ function renderPlayer(p) {
     ['Allowed per win', s.allowedPerWin == null ? '—' : s.allowedPerWin.toFixed(1), ''],
     ['Biggest win', s.bestMargin == null ? '—' : `10–${10 - s.bestMargin}`, ''],
     ['Series won', s.series, ''],
+    ['Trophies won', s.trophies, s.trophies > 0 ? 'pos' : ''],
   ];
 
   const total = s.won + s.lost;
@@ -775,6 +806,7 @@ function renderAll() {
   renderPlayer('kevin');
   renderPlayer('josh');
   renderCal();
+  maybeCelebrateSeason(view);
 
   if (!ready) {
     ready = true;
@@ -783,6 +815,39 @@ function renderAll() {
     // background tab, and the splash would sit there forever.
     dismissBoot();
   }
+}
+
+// When the match that just synced tips someone to their 5th series, throw up a
+// full-screen trophy moment. Fires once per new trophy — not on the initial
+// load of already-won seasons.
+let seenTrophies = null;
+function maybeCelebrateSeason(v) {
+  const t = v.trophies;
+  if (seenTrophies === null) { seenTrophies = { ...t }; return; }
+  for (const p of PLAYERS) {
+    if (t[p] > seenTrophies[p]) {
+      seenTrophies = { ...t };
+      celebrateSeason(p, t.kevin + t.josh);
+      return;
+    }
+  }
+  seenTrophies = { ...t };
+}
+
+function celebrateSeason(winner, seasonNum) {
+  buzz(60);
+  const root = $('sheet-root');
+  root.innerHTML = `
+    <div class="scrim celebrate">
+      <div class="trophyfx ${winner}">
+        <div class="tbig">🏆</div>
+        <div class="tname">${NAME[winner]} wins</div>
+        <div class="tseason">Season ${seasonNum}</div>
+        <div class="tsub">Five series taken — a new season begins now.</div>
+        <button class="cta" id="celebrate-ok">On to Season ${seasonNum + 1}</button>
+      </div>
+    </div>`;
+  root.querySelector('#celebrate-ok').onclick = () => { root.innerHTML = ''; };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
