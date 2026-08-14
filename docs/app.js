@@ -814,18 +814,25 @@ function renderAll() {
     // Don't hang this on requestAnimationFrame — it never fires in a
     // background tab, and the splash would sit there forever.
     dismissBoot();
+    // Arm the season celebration only after the initial data has settled, so
+    // the load itself never looks like someone "just won".
+    setTimeout(() => { celebrationsArmed = true; }, 3000);
   }
 }
 
 // When the match that just synced tips someone to their 5th series, throw up a
-// full-screen trophy moment. Fires once per new trophy — not on the initial
-// load of already-won seasons.
+// full-screen trophy moment. Only for wins that happen LIVE — never on load of
+// already-won seasons. Celebrations stay disarmed until the data has settled
+// (the initial load renders twice: once with matches empty, once full), so we
+// track the current trophy count during that window and only start reacting to
+// *increases* afterward.
 let seenTrophies = null;
+let celebrationsArmed = false;
 function maybeCelebrateSeason(v) {
   const t = v.trophies;
-  if (seenTrophies === null) { seenTrophies = { ...t }; return; }
+  if (!celebrationsArmed) { seenTrophies = { ...t }; return; }
   for (const p of PLAYERS) {
-    if (t[p] > seenTrophies[p]) {
+    if (t[p] > (seenTrophies?.[p] ?? 0)) {
       seenTrophies = { ...t };
       celebrateSeason(p, t.kevin + t.josh);
       return;

@@ -14,7 +14,7 @@
 //  version-pinned and immutable, so that cache persists across deploys.
 // ═══════════════════════════════════════════════════════════════════════
 
-const SHELL_VERSION = 'v12';                       // ← keep in sync with ?v= in index.html
+const SHELL_VERSION = 'v13';                       // ← keep in sync with ?v= in index.html
 const SHELL_CACHE = `foos-shell-${SHELL_VERSION}`;
 const VENDOR_CACHE = 'foos-vendor';                // Firebase SDK — immutable, survives deploys
 
